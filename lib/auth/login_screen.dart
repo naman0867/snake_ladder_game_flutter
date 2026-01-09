@@ -11,32 +11,30 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _loading = false;
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+
+  bool loading = false;
 
   Future<void> login() async {
-    setState(() => _loading = true);
+    setState(() => loading = true);
 
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
       );
-
-      if (!mounted) return;
 
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const GameScreen()),
       );
-    } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message ?? "Login failed")),
-      );
-    } finally {
-      if (mounted) setState(() => _loading = false);
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
     }
+
+    setState(() => loading = false);
   }
 
   @override
@@ -46,36 +44,29 @@ class _LoginScreenState extends State<LoginScreen> {
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Text(
               "Snake & Ladder",
               style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 30),
-
             TextField(
-              controller: _emailController,
+              controller: emailController,
               decoration: const InputDecoration(labelText: "Email"),
             ),
             const SizedBox(height: 10),
-
             TextField(
-              controller: _passwordController,
+              controller: passwordController,
               decoration: const InputDecoration(labelText: "Password"),
               obscureText: true,
             ),
             const SizedBox(height: 20),
-
-            _loading
-                ? const CircularProgressIndicator()
-                : ElevatedButton(
-                    onPressed: login,
-                    child: const Text("Login"),
-                  ),
-
-            const SizedBox(height: 10),
-
+            ElevatedButton(
+              onPressed: loading ? null : login,
+              child: loading
+                  ? const CircularProgressIndicator()
+                  : const Text("Login"),
+            ),
             TextButton(
               onPressed: () {
                 Navigator.push(

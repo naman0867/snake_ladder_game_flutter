@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "115832952064",
+    "project_id": "snake-ladder-game-c21e9",
+    "storage_bucket": "snake-ladder-game-c21e9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:115832952064:android:13e334a6c4441f6fc00fe5",
+        "android_client_info": {
+          "package_name": "com.example.snake_ladder_game"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBuUFRzkRAnVM2axscdtTOlV-F1iCIhFQo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

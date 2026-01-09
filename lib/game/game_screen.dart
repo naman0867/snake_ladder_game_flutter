@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../leaderboard/leaderboard_screen.dart';
 
 class GameScreen extends StatefulWidget {
@@ -12,207 +12,149 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
-  int diceNumber = 1;
+  int playerPosition = 0;
+  int diceValue = 1;
+  int moves = 0;
+  bool gameOver = false;
 
-  int player1Pos = 1;
-  int player2Pos = 1;
+  final Random random = Random();
 
-  bool isPlayer1Turn = true;
-
-  final AudioPlayer _audioPlayer = AudioPlayer();
-
-  /// 🪜 Ladders
-  final Map<int, int> ladders = {
-    3: 22,
-    5: 8,
-    11: 26,
-    20: 29,
+  /// Snakes and ladders map
+  final Map<int, int> snakesAndLadders = {
+    3: 22,   // ladder
+    5: 8,    // ladder
+    11: 26,  // ladder
+    20: 29,  // ladder
+    27: 1,   // snake
+    21: 9,   // snake
+    17: 4,   // snake
+    19: 7,   // snake
   };
 
-  /// 🐍 Snakes
-  final Map<int, int> snakes = {
-    27: 1,
-    21: 9,
-    17: 4,
-    19: 7,
-  };
-
-  Future<void> rollDice() async {
-    await _audioPlayer.play(AssetSource('sounds/dice.mp3'));
-
-    int roll = Random().nextInt(6) + 1;
-    int currentPos = isPlayer1Turn ? player1Pos : player2Pos;
-    int nextPos = currentPos + roll;
-
-    if (nextPos <= 100) {
-      if (ladders.containsKey(nextPos)) {
-        nextPos = ladders[nextPos]!;
-      } else if (snakes.containsKey(nextPos)) {
-        nextPos = snakes[nextPos]!;
-      }
-    } else {
-      nextPos = currentPos;
-    }
+  void rollDice() async {
+    if (gameOver) return;
 
     setState(() {
-      diceNumber = roll;
-
-      if (isPlayer1Turn) {
-        player1Pos = nextPos;
-      } else {
-        player2Pos = nextPos;
-      }
-
-      if (nextPos == 100) {
-        saveWinner(isPlayer1Turn ? "Player 1" : "Player 2");
-        showWinDialog(isPlayer1Turn ? "Player 1" : "Player 2");
-      } else {
-        isPlayer1Turn = !isPlayer1Turn;
-      }
+      diceValue = random.nextInt(6) + 1;
+      moves++;
     });
+
+    int nextPosition = playerPosition + diceValue;
+
+    if (nextPosition <= 30) {
+      await Future.delayed(const Duration(milliseconds: 400));
+
+      if (snakesAndLadders.containsKey(nextPosition)) {
+        nextPosition = snakesAndLadders[nextPosition]!;
+      }
+
+      setState(() {
+        playerPosition = nextPosition;
+      });
+
+      if (playerPosition == 30) {
+        gameOver = true;
+        saveScore();
+        showWinDialog();
+      }
+    }
   }
 
-  Future<void> saveWinner(String playerName) async {
+  Future<void> saveScore() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
     await FirebaseFirestore.instance.collection('leaderboard').add({
-      'player': playerName,
+      'email': user.email,
       'score': 100,
-      'timestamp': FieldValue.serverTimestamp(),
+      'time': moves,
+      'createdAt': FieldValue.serverTimestamp(),
     });
   }
 
-  void showWinDialog(String winner) async {
-    await _audioPlayer.play(AssetSource('sounds/win.mp3'));
-
+  void showWinDialog() {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => AlertDialog(
-        title: const Text("🎉 Game Over"),
-        content: Text("$winner Wins the Game!"),
+        title: const Text("🎉 You Win!"),
+        content: Text("Moves taken: $moves"),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              resetGame();
-            },
-            child: const Text("Play Again"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void resetGame() {
-    setState(() {
-      player1Pos = 1;
-      player2Pos = 1;
-      isPlayer1Turn = true;
-      diceNumber = 1;
-    });
-  }
-
-  List<int> generateBoardNumbers() {
-    List<int> numbers = [];
-    int start = 100;
-
-    for (int row = 0; row < 10; row++) {
-      List<int> rowNums = List.generate(10, (i) => start - i);
-      if (row.isOdd) rowNums = rowNums.reversed.toList();
-      numbers.addAll(rowNums);
-      start -= 10;
-    }
-    return numbers;
-  }
-
-  Widget buildCell(int number) {
-    bool p1Here = number == player1Pos;
-    bool p2Here = number == player2Pos;
-
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.black),
-        color: Colors.white,
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Text(number.toString(), style: const TextStyle(fontSize: 11)),
-
-          if (snakes.containsKey(number))
-            const Align(alignment: Alignment.topRight, child: Text("🐍")),
-
-          if (ladders.containsKey(number))
-            const Align(alignment: Alignment.bottomLeft, child: Text("🪜")),
-
-          if (p1Here)
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: CircleAvatar(radius: 6, backgroundColor: Colors.red),
-            ),
-
-          if (p2Here)
-            const Align(
-              alignment: Alignment.centerRight,
-              child: CircleAvatar(radius: 6, backgroundColor: Colors.blue),
-            ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final boardNumbers = generateBoardNumbers();
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Snake & Ladder"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.leaderboard),
-            onPressed: () {
-              Navigator.push(
+              Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
                   builder: (_) => const LeaderboardScreen(),
                 ),
               );
             },
-          )
+            child: const Text("View Leaderboard"),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget buildBoard() {
+    return GridView.builder(
+      itemCount: 30,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 5,
+      ),
+      itemBuilder: (context, index) {
+        int cellNumber = 30 - index;
+        bool isPlayerHere = cellNumber == playerPosition;
+
+        return Container(
+          margin: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: isPlayerHere ? Colors.green : Colors.blue.shade100,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.black),
+          ),
+          child: Center(
+            child: Text(
+              cellNumber.toString(),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: isPlayerHere ? Colors.white : Colors.black,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Snake & Ladder"),
+        centerTitle: true,
       ),
       body: Column(
         children: [
           const SizedBox(height: 10),
-
           Text(
-            isPlayer1Turn ? "Player 1's Turn 🔴" : "Player 2's Turn 🔵",
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            "Position: $playerPosition",
+            style: const TextStyle(fontSize: 20),
           ),
-
-          const SizedBox(height: 6),
-          Text("Dice: $diceNumber", style: const TextStyle(fontSize: 16)),
-
+          Text(
+            "Dice: $diceValue",
+            style: const TextStyle(fontSize: 18),
+          ),
+          const SizedBox(height: 10),
+          Expanded(child: buildBoard()),
+          const SizedBox(height: 10),
           ElevatedButton(
             onPressed: rollDice,
             child: const Text("Roll Dice 🎲"),
           ),
-
-          const SizedBox(height: 10),
-
-          Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.all(8),
-              gridDelegate:
-                  const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 10,
-              ),
-              itemCount: 100,
-              itemBuilder: (_, index) {
-                return buildCell(boardNumbers[index]);
-              },
-            ),
-          ),
+          const SizedBox(height: 20),
         ],
       ),
     );

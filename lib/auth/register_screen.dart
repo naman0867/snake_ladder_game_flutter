@@ -13,14 +13,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
-  bool isLoading = false;
-  String errorMessage = '';
+  bool loading = false;
 
   Future<void> register() async {
-    setState(() {
-      isLoading = true;
-      errorMessage = '';
-    });
+    setState(() => loading = true);
 
     try {
       await FirebaseAuth.instance.createUserWithEmailAndPassword(
@@ -28,24 +24,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
         password: passwordController.text.trim(),
       );
 
-      // ✅ VERY IMPORTANT FIX
-      if (!mounted) return;
-
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const GameScreen()),
       );
-    } on FirebaseAuthException catch (e) {
-      setState(() {
-        errorMessage = e.message ?? 'Registration failed';
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
     }
+
+    setState(() => loading = false);
   }
 
   @override
@@ -55,50 +43,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
-              "Create Account",
-              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 25),
-
             TextField(
               controller: emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: "Email",
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: "Email"),
             ),
-            const SizedBox(height: 15),
-
+            const SizedBox(height: 10),
             TextField(
               controller: passwordController,
+              decoration: const InputDecoration(labelText: "Password"),
               obscureText: true,
-              decoration: const InputDecoration(
-                labelText: "Password",
-                border: OutlineInputBorder(),
-              ),
             ),
             const SizedBox(height: 20),
-
-            if (errorMessage.isNotEmpty)
-              Text(
-                errorMessage,
-                style: const TextStyle(color: Colors.red),
-              ),
-
-            const SizedBox(height: 10),
-
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: isLoading ? null : register,
-                child: isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text("Register"),
-              ),
+            ElevatedButton(
+              onPressed: loading ? null : register,
+              child: loading
+                  ? const CircularProgressIndicator()
+                  : const Text("Register"),
             ),
           ],
         ),

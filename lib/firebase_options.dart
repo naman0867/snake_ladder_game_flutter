@@ -83,4 +83,5 @@ class DefaultFirebaseOptions {
     authDomain: 'snake-ladder-game-c21e9.firebaseapp.com',
     storageBucket: 'snake-ladder-game-c21e9.firebasestorage.app',
   );
+
 }
