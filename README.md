@@ -22,7 +22,7 @@ The application includes:
 
 ## 🛠️ Technologies Used
 
-- Flutter** (Latest Stable)
+- Flutter(Latest Stable)
 - Dart
 - Firebase Authentication
 - Cloud Firestore
