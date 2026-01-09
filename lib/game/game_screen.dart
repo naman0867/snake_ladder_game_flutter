@@ -5,7 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../leaderboard/leaderboard_screen.dart';
 
 class GameScreen extends StatefulWidget {
-  const GameScreen({super.key});
+  GameScreen({Key? key}) : super(key: key);
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -19,16 +19,16 @@ class _GameScreenState extends State<GameScreen> {
 
   final Random random = Random();
 
-  /// Snakes and ladders map
+  // Snakes & Ladders mapping
   final Map<int, int> snakesAndLadders = {
-    3: 22,   // ladder
-    5: 8,    // ladder
-    11: 26,  // ladder
-    20: 29,  // ladder
-    27: 1,   // snake
-    21: 9,   // snake
-    17: 4,   // snake
-    19: 7,   // snake
+    3: 22,
+    5: 8,
+    11: 26,
+    20: 29,
+    27: 1,
+    21: 9,
+    17: 4,
+    19: 7,
   };
 
   void rollDice() async {
@@ -39,22 +39,22 @@ class _GameScreenState extends State<GameScreen> {
       moves++;
     });
 
-    int nextPosition = playerPosition + diceValue;
+    int nextPos = playerPosition + diceValue;
 
-    if (nextPosition <= 30) {
-      await Future.delayed(const Duration(milliseconds: 400));
+    if (nextPos <= 30) {
+      await Future.delayed(const Duration(milliseconds: 300));
 
-      if (snakesAndLadders.containsKey(nextPosition)) {
-        nextPosition = snakesAndLadders[nextPosition]!;
+      if (snakesAndLadders.containsKey(nextPos)) {
+        nextPos = snakesAndLadders[nextPos]!;
       }
 
       setState(() {
-        playerPosition = nextPosition;
+        playerPosition = nextPos;
       });
 
       if (playerPosition == 30) {
         gameOver = true;
-        saveScore();
+        await saveScore();
         showWinDialog();
       }
     }
@@ -76,24 +76,26 @@ class _GameScreenState extends State<GameScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        title: const Text("🎉 You Win!"),
-        content: Text("Moves taken: $moves"),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const LeaderboardScreen(),
-                ),
-              );
-            },
-            child: const Text("View Leaderboard"),
-          ),
-        ],
-      ),
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("🎉 You Win!"),
+          content: Text("Total moves: $moves"),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => LeaderboardScreen(),
+                  ),
+                );
+              },
+              child: const Text("View Leaderboard"),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -139,14 +141,10 @@ class _GameScreenState extends State<GameScreen> {
       body: Column(
         children: [
           const SizedBox(height: 10),
-          Text(
-            "Position: $playerPosition",
-            style: const TextStyle(fontSize: 20),
-          ),
-          Text(
-            "Dice: $diceValue",
-            style: const TextStyle(fontSize: 18),
-          ),
+          Text("Position: $playerPosition",
+              style: const TextStyle(fontSize: 18)),
+          Text("Dice: $diceValue",
+              style: const TextStyle(fontSize: 18)),
           const SizedBox(height: 10),
           Expanded(child: buildBoard()),
           const SizedBox(height: 10),

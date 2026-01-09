@@ -4,20 +4,22 @@ import '../game/game_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({Key? key}) : super(key: key);
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
 
   bool loading = false;
 
-  Future<void> login() async {
-    setState(() => loading = true);
+  Future<void> loginUser() async {
+    setState(() {
+      loading = true;
+    });
 
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -27,14 +29,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const GameScreen()),
+        MaterialPageRoute(
+          builder: (context) => GameScreen(), // ✅ NO const
+        ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
     }
 
-    setState(() => loading = false);
+    setState(() {
+      loading = false;
+    });
   }
 
   @override
@@ -44,6 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Text(
               "Snake & Ladder",
@@ -62,7 +70,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: loading ? null : login,
+              onPressed: loading ? null : loginUser,
               child: loading
                   ? const CircularProgressIndicator()
                   : const Text("Login"),
@@ -72,7 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => const RegisterScreen(),
+                    builder: (context) => const RegisterScreen(),
                   ),
                 );
               },

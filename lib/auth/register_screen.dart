@@ -3,20 +3,22 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../game/game_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  const RegisterScreen({Key? key}) : super(key: key);
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
 
   bool loading = false;
 
-  Future<void> register() async {
-    setState(() => loading = true);
+  Future<void> registerUser() async {
+    setState(() {
+      loading = true;
+    });
 
     try {
       await FirebaseAuth.instance.createUserWithEmailAndPassword(
@@ -26,14 +28,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const GameScreen()),
+        MaterialPageRoute(
+          builder: (context) => GameScreen(), // ✅ NO const
+        ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
     }
 
-    setState(() => loading = false);
+    setState(() {
+      loading = false;
+    });
   }
 
   @override
@@ -43,6 +50,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TextField(
               controller: emailController,
@@ -56,7 +64,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: loading ? null : register,
+              onPressed: loading ? null : registerUser,
               child: loading
                   ? const CircularProgressIndicator()
                   : const Text("Register"),
