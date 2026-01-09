@@ -1,51 +1,35 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LeaderboardScreen extends StatelessWidget {
-  LeaderboardScreen({Key? key}) : super(key: key);
+  LeaderboardScreen({super.key});
+
+  final List<Map<String, dynamic>> leaderboard = [
+    {"player": "Player 1", "wins": 3},
+    {"player": "Player 2", "wins": 2},
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Leaderboard 🏆"),
-        centerTitle: true,
+        title: const Text("Leaderboard"),
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('leaderboard')
-            .orderBy('time')
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final docs = snapshot.data!.docs;
-
-          if (docs.isEmpty) {
-            return const Center(child: Text("No scores yet"));
-          }
-
-          return ListView.builder(
-            itemCount: docs.length,
-            itemBuilder: (context, index) {
-              final data =
-                  docs[index].data() as Map<String, dynamic>;
-
-              return ListTile(
-                leading: CircleAvatar(
-                  child: Text("${index + 1}"),
-                ),
-                title: Text(data['email'] ?? 'Unknown'),
-                subtitle: Text("Moves: ${data['time']}"),
-                trailing: const Icon(Icons.emoji_events),
-              );
-            },
+      body: ListView.builder(
+        itemCount: leaderboard.length,
+        itemBuilder: (context, index) {
+          final data = leaderboard[index];
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: ListTile(
+              leading: CircleAvatar(
+                child: Text("${index + 1}"),
+              ),
+              title: Text(data["player"]),
+              subtitle: Text("Wins: ${data["wins"]}"),
+            ),
           );
         },
       ),
     );
   }
 }
-

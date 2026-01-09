@@ -1,158 +1,244 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../leaderboard/leaderboard_screen.dart';
 
 class GameScreen extends StatefulWidget {
-  GameScreen({Key? key}) : super(key: key);
+  const GameScreen({super.key});
 
   @override
   State<GameScreen> createState() => _GameScreenState();
 }
 
 class _GameScreenState extends State<GameScreen> {
-  int playerPosition = 0;
-  int diceValue = 1;
-  int moves = 0;
-  bool gameOver = false;
+  int dice = 1;
+  int currentPlayer = 1;
+  int p1Pos = 1;
+  int p2Pos = 1;
+  bool isRolling = false;
 
-  final Random random = Random();
+  final Random _random = Random();
 
-  // Snakes & Ladders mapping
-  final Map<int, int> snakesAndLadders = {
-    3: 22,
-    5: 8,
-    11: 26,
-    20: 29,
-    27: 1,
-    21: 9,
-    17: 4,
-    19: 7,
+  // 🐍 Snakes
+  final Map<int, int> snakes = {
+    99: 54,
+    95: 75,
+    92: 88,
+    87: 24,
+    64: 60,
+    62: 19,
+    54: 34,
+    49: 11,
   };
 
-  void rollDice() async {
-    if (gameOver) return;
+  // 🪜 Ladders
+  final Map<int, int> ladders = {
+    2: 38,
+    7: 14,
+    8: 31,
+    15: 26,
+    21: 42,
+    28: 84,
+    36: 44,
+    51: 67,
+    71: 91,
+    78: 98,
+  };
+
+  // 🎲 Dice roll with animation
+  Future<void> rollDice() async {
+    if (isRolling) return;
+
+    setState(() => isRolling = true);
+
+    for (int i = 0; i < 10; i++) {
+      await Future.delayed(const Duration(milliseconds: 80));
+      setState(() {
+        dice = _random.nextInt(6) + 1;
+      });
+    }
+
+    int newPos =
+        (currentPlayer == 1 ? p1Pos : p2Pos) + dice;
+
+    if (newPos > 100) {
+      setState(() {
+        currentPlayer = currentPlayer == 1 ? 2 : 1;
+        isRolling = false;
+      });
+      return;
+    }
+
+    if (ladders.containsKey(newPos)) {
+      newPos = ladders[newPos]!;
+    } else if (snakes.containsKey(newPos)) {
+      newPos = snakes[newPos]!;
+    }
 
     setState(() {
-      diceValue = random.nextInt(6) + 1;
-      moves++;
-    });
-
-    int nextPos = playerPosition + diceValue;
-
-    if (nextPos <= 30) {
-      await Future.delayed(const Duration(milliseconds: 300));
-
-      if (snakesAndLadders.containsKey(nextPos)) {
-        nextPos = snakesAndLadders[nextPos]!;
+      if (currentPlayer == 1) {
+        p1Pos = newPos;
+        if (p1Pos == 100) {
+          _showWinDialog("Player 1");
+          return;
+        }
+      } else {
+        p2Pos = newPos;
+        if (p2Pos == 100) {
+          _showWinDialog("Player 2");
+          return;
+        }
       }
 
-      setState(() {
-        playerPosition = nextPos;
-      });
-
-      if (playerPosition == 30) {
-        gameOver = true;
-        await saveScore();
-        showWinDialog();
-      }
-    }
-  }
-
-  Future<void> saveScore() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    await FirebaseFirestore.instance.collection('leaderboard').add({
-      'email': user.email,
-      'score': 100,
-      'time': moves,
-      'createdAt': FieldValue.serverTimestamp(),
+      currentPlayer = currentPlayer == 1 ? 2 : 1;
+      isRolling = false;
     });
   }
 
-  void showWinDialog() {
+  // 🏁 Win dialog
+  void _showWinDialog(String winner) {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("🎉 You Win!"),
-          content: Text("Total moves: $moves"),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => LeaderboardScreen(),
-                  ),
-                );
-              },
-              child: const Text("View Leaderboard"),
-            ),
-          ],
-        );
-      },
+      builder: (_) => AlertDialog(
+        title: const Text("🎉 Game Over"),
+        content: Text("$winner wins the game!"),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              resetGame();
+            },
+            child: const Text("Play Again"),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => LeaderboardScreen(),
+                ),
+              );
+              resetGame(); // ✅ critical fix
+            },
+            child: const Text("Leaderboard"),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget buildBoard() {
-    return GridView.builder(
-      itemCount: 30,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 5,
-      ),
-      itemBuilder: (context, index) {
-        int cellNumber = 30 - index;
-        bool isPlayerHere = cellNumber == playerPosition;
+  // 🔄 Reset game state
+  void resetGame() {
+    setState(() {
+      p1Pos = 1;
+      p2Pos = 1;
+      dice = 1;
+      currentPlayer = 1;
+      isRolling = false;
+    });
+  }
 
-        return Container(
-          margin: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: isPlayerHere ? Colors.green : Colors.blue.shade100,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.black),
-          ),
-          child: Center(
-            child: Text(
-              cellNumber.toString(),
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: isPlayerHere ? Colors.white : Colors.black,
-              ),
-            ),
-          ),
-        );
-      },
-    );
+  // 🎨 Tile color logic
+  Color tileColor(int number) {
+    if (number == p1Pos && number == p2Pos) return Colors.purple;
+    if (number == p1Pos) return Colors.green;
+    if (number == p2Pos) return Colors.red;
+    if (ladders.containsKey(number)) return Colors.lightGreen;
+    if (snakes.containsKey(number)) return Colors.orange;
+    return Colors.blue.shade200;
+  }
+
+  // 🧾 Tile label
+  String tileText(int number) {
+    if (number == p1Pos && number == p2Pos) return "P1&P2";
+    if (number == p1Pos) return "P1";
+    if (number == p2Pos) return "P2";
+    if (ladders.containsKey(number)) return "⬆$number";
+    if (snakes.containsKey(number)) return "⬇$number";
+    return number.toString();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Snake & Ladder"),
-        centerTitle: true,
+        title: const Text("Snake & Ladder (100 Board)"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.leaderboard),
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => LeaderboardScreen(),
+                ),
+              );
+              resetGame(); // ✅ fixes roll issue
+            },
+          )
+        ],
       ),
       body: Column(
         children: [
           const SizedBox(height: 10),
-          Text("Position: $playerPosition",
-              style: const TextStyle(fontSize: 18)),
-          Text("Dice: $diceValue",
-              style: const TextStyle(fontSize: 18)),
-          const SizedBox(height: 10),
-          Expanded(child: buildBoard()),
-          const SizedBox(height: 10),
-          ElevatedButton(
-            onPressed: rollDice,
-            child: const Text("Roll Dice 🎲"),
+          Text(
+            "Player $currentPlayer's Turn",
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 6),
+
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            transitionBuilder: (child, animation) =>
+                ScaleTransition(scale: animation, child: child),
+            child: Text(
+              "🎲 $dice",
+              key: ValueKey(dice),
+              style: const TextStyle(fontSize: 28),
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          Expanded(
+            child: GridView.builder(
+              padding: const EdgeInsets.all(10),
+              itemCount: 100,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 10,
+                crossAxisSpacing: 4,
+                mainAxisSpacing: 4,
+              ),
+              itemBuilder: (_, index) {
+                int number = 100 - index;
+                return Container(
+                  decoration: BoxDecoration(
+                    color: tileColor(number),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Center(
+                    child: Text(
+                      tileText(number),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: ElevatedButton(
+              onPressed: isRolling ? null : rollDice,
+              child: const Text("Roll Dice 🎲"),
+            ),
+          ),
         ],
       ),
     );
